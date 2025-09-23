@@ -238,3 +238,15 @@ func (c *cdb) PlacingOrder(id int) ([]int, int) {
 	}
 	return products, priceTotal
 }
+
+func (c *cdb) AddProduct(name string, description string, price int) int{
+	result, err := c.db.Exec("INSERT INTO products (name, description, price) VALUES (?, ?, ?)", name, description, price)
+	if err != nil {
+		panic(err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		panic(err)
+	}
+	return int(id)
+}

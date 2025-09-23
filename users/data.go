@@ -1,6 +1,10 @@
 package users
 
-import "backendAPI/db"
+import (
+	"backendAPI/db"
+	"encoding/json"
+	"os"
+)
 
 // Структуры
 
@@ -26,9 +30,15 @@ type ProfileData struct {
 }
 
 type Order struct {
-	IdO int `json:"id"`
-	Products []int `json:"products"`
-	Order_price int `json:"order_price"`
+	IdO         int   `json:"id"`
+	Products    []int `json:"products"`
+	Order_price int   `json:"order_price"`
+}
+
+type Product struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       int    `json:"price"`
 }
 
 // Чувствительные данные
@@ -49,4 +59,26 @@ func (a *authorizedUsers) AddToken(id int, token int) {
 
 func (a *authorizedUsers) RemoveToken(id int) {
 	delete(a.token, id)
+}
+
+type admin struct {
+	IDs []int
+}
+
+func NewAdmins() *admin {
+	idAdmins := make([]int, 1)
+
+	file, err := os.Open("users/admins.json")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	if err := json.NewDecoder(file).Decode(&idAdmins); err != nil {
+		panic(err)
+	}
+
+	return &admin{
+		IDs: idAdmins,
+	}
 }
