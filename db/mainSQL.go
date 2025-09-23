@@ -259,7 +259,7 @@ func (c *cdb) AddProductAdmin(name string, description string, price int) int{
 }
 
 func (c *cdb) DeleteProductAdmin(idP int){
-	_, err := c.db.Exec("DELETE FROM products WHERE idC = ?", idP)
+	_, err := c.db.Exec("DELETE FROM products WHERE idP = ?", idP)
 	if err != nil {
 		panic(err)
 	}

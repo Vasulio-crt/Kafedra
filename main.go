@@ -26,7 +26,7 @@ func main() {
 	router.Path("/profile").Methods("PATCH").HandlerFunc(users.EditProfile)
 	
 	router.Path("/product").Methods("POST").HandlerFunc(users.AddProductAdmin)
-	router.Path("/product/{id}").Methods("DELETE").HandlerFunc(users.AddProductAdmin)
+	router.Path("/product/{id}").Methods("DELETE").HandlerFunc(users.DeleteProductAdmin)
 	router.Path("/product/{id}").Methods("PATCH").HandlerFunc(users.EditProductAdmin)
 
 	router.Path("/test").Methods("OPTIONS").HandlerFunc(users.TEST)
