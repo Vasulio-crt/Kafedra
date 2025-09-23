@@ -239,7 +239,14 @@ func (c *cdb) PlacingOrder(id int) ([]int, int) {
 	return products, priceTotal
 }
 
-func (c *cdb) AddProduct(name string, description string, price int) int{
+type ProductFull struct {
+	Id          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       int    `json:"price"`
+}
+
+func (c *cdb) AddProductAdmin(name string, description string, price int) int{
 	result, err := c.db.Exec("INSERT INTO products (name, description, price) VALUES (?, ?, ?)", name, description, price)
 	if err != nil {
 		panic(err)
@@ -249,4 +256,22 @@ func (c *cdb) AddProduct(name string, description string, price int) int{
 		panic(err)
 	}
 	return int(id)
+}
+
+func (c *cdb) DeleteProductAdmin(idP int){
+	_, err := c.db.Exec("DELETE FROM products WHERE idC = ?", idP)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (c *cdb) SelectProduct(idP int) ProductFull {
+	row, err := c.db.Query("SELECT * FROM products WHERE idP = ?", idP)
+	if err != nil {
+		panic(err)
+	}
+	defer row.Close()
+	product := ProductFull{}
+	row.Scan(&product.Id, &product.Name, &product.Description, &product.Price)
+	return product
 }
