@@ -11,6 +11,7 @@ import (
 
 func main() {
 	db.CreateDatabase()
+	defer users.DB.CloseDB()
 	router := mux.NewRouter()
 
 	router.Path("/signup").Methods("POST").HandlerFunc(users.SignUp)
@@ -24,12 +25,11 @@ func main() {
 	router.Path("/order").Methods("POST").HandlerFunc(users.PlacingOrder)
 	router.Path("/order").Methods("GET").HandlerFunc(users.ViewOrder)
 	router.Path("/profile").Methods("PATCH").HandlerFunc(users.EditProfile)
-	
+
 	router.Path("/product").Methods("POST").HandlerFunc(users.AddProductAdmin)
 	router.Path("/product/{id}").Methods("DELETE").HandlerFunc(users.DeleteProductAdmin)
 	router.Path("/product/{id}").Methods("PATCH").HandlerFunc(users.EditProductAdmin)
 
-	router.Path("/test").Methods("OPTIONS").HandlerFunc(users.TEST)
 	if err := http.ListenAndServe(":8080", router); err != nil {
 		fmt.Println("Error:", err.Error())
 	}

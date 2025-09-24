@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -14,13 +13,9 @@ import (
 )
 
 var authorized = NewAuthorizedUsers()
+var DB = db.ConnectDB()
 
 // ---Работа с аккаунтами---
-
-func isValidEmail(email string) bool {
-	re := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	return re.MatchString(email)
-}
 
 func SignUp(w http.ResponseWriter, r *http.Request) {
 	var req RegistrationData
@@ -51,10 +46,8 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		req.Avatar = "avatars/default.jpeg"
 	}
 
-	db := db.ConnectDB()
-	db.InsertUser(req.Fio, req.Email, req.Password, req.Avatar)
-	idU := db.GetIdUser(req.Email)
-	db.CloseDB()
+	DB.InsertUser(req.Fio, req.Email, req.Password, req.Avatar)
+	idU := DB.GetIdUser(req.Email)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -90,7 +83,7 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 
 	db := db.ConnectDB()
 	idU, password := db.GetPassword(req.Email)
-	db.CloseDB()
+	 
 
 	if password != req.Password {
 		http.Error(w, `{"message": "Login failed"}`, http.StatusUnauthorized)
@@ -103,24 +96,6 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 
 	mes := fmt.Sprintf(`{"user_token": %d}`, token)
 	w.Write([]byte(mes))
-}
-
-func findKeyByValue(m map[int]int, targetValue int) (int, bool) {
-	for key, value := range m {
-		if value == targetValue {
-			return key, true
-		}
-	}
-	return 0, false
-}
-
-func getTokenFromHeader(w http.ResponseWriter, r *http.Request) int {
-	token, err := strconv.Atoi(r.Header.Get("token"))
-	if err != nil {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
-		return -1
-	}
-	return token
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +132,7 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	db := db.ConnectDB()
-	defer db.CloseDB()
+
 	if req.Avatar != "" {
 		if _, err := db.Exec("UPDATE users SET avatar = ? WHERE id = ?", req.Avatar, id); err != nil {
 			panic(err)
@@ -182,7 +157,7 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 func ViewProduct(w http.ResponseWriter, r *http.Request) {
 	db := db.ConnectDB()
 	products := db.GetProduct()
-	db.CloseDB()
+	 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -208,7 +183,7 @@ func ViewProfile(w http.ResponseWriter, r *http.Request) {
 
 	db := db.ConnectDB()
 	user := db.GetUser(id)
-	db.CloseDB()
+	 
 
 	w.WriteHeader(http.StatusOK)
 
@@ -233,7 +208,6 @@ func AddingProduct(w http.ResponseWriter, r *http.Request) {
 
 	db := db.ConnectDB()
 	product := db.GetProductById(product_id)
-	defer db.CloseDB()
 
 	if product.IdProduct == 0 {
 		http.Error(w, `{"error": "Invalid product ID"}`, http.StatusBadRequest)
@@ -264,7 +238,7 @@ func ViewCart(w http.ResponseWriter, r *http.Request) {
 	}
 	db := db.ConnectDB()
 	cart := db.ViewCart(id)
-	db.CloseDB()
+	 
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(cart); err != nil {
@@ -290,7 +264,7 @@ func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	db := db.ConnectDB()
 	db.DeleteProduct(idC, id)
-	db.CloseDB()
+	 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"message": "Item removed from cart"}`))
@@ -310,7 +284,7 @@ func PlacingOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	db := db.ConnectDB()
 	products, order_price := db.PlacingOrder(id)
-	defer db.CloseDB()
+
 	if len(products) == 0 {
 		http.Error(w, `{"error": "Cart is empty"}`, http.StatusUnprocessableEntity)
 		return
@@ -396,10 +370,4 @@ func ViewOrder(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 	}
-}
-
-func TEST(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Println(authorized.token)
-	w.Write([]byte(fmt.Sprintf(`{"authorized.token": "%v"}`, authorized.token)))
 }
