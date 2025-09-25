@@ -118,7 +118,7 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 func ViewProduct(w http.ResponseWriter, r *http.Request) {
 	products := DB.GetProduct()
 
-	//w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(products); err != nil {
 		panic(err)
 	}
