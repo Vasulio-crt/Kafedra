@@ -17,13 +17,9 @@ var admins = NewAdmins()
 // ---Работа с продуктами---
 
 func AddProductAdmin(w http.ResponseWriter, r *http.Request) {
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	id, ok := findKeyByValue(authorized.token, token)
+	id, ok := whatIdUser(r)
 	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
 	if !contains(admins.IDs, id) {
@@ -59,14 +55,10 @@ func contains(i []int, id int) bool {
 	return false
 }
 
-func DeleteProductAdmin (w http.ResponseWriter, r *http.Request) {
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	id, ok := findKeyByValue(authorized.token, token)
+func DeleteProductAdmin(w http.ResponseWriter, r *http.Request) {
+	id, ok := whatIdUser(r)
 	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
 	if !contains(admins.IDs, id) {
@@ -88,13 +80,9 @@ func DeleteProductAdmin (w http.ResponseWriter, r *http.Request) {
 }
 
 func EditProductAdmin(w http.ResponseWriter, r *http.Request) {
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	id, ok := findKeyByValue(authorized.token, token)
+	id, ok := whatIdUser(r)
 	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
 	if !contains(admins.IDs, id) {
@@ -130,10 +118,10 @@ func EditProductAdmin(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	product := db.SelectProduct(idP)
-	if err := json.NewEncoder(w).Encode(product); err != nil{
+	if err := json.NewEncoder(w).Encode(product); err != nil {
 		panic(err)
 	}
 }

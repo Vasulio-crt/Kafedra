@@ -20,28 +20,12 @@ var DB = db.ConnectDB()
 func SignUp(w http.ResponseWriter, r *http.Request) {
 	var req RegistrationData
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"message": "Internal Server Error"}`, http.StatusInternalServerError)
-		return
+		panic(err)
 	}
 
-	errors := make(map[string]string)
-	if req.Fio == "" {
-		errors["fio"] = "FIO is a required field"
+	if req.Fio == "" || !isValidEmail(req.Email) || len(req.Password) < 3 {
+		errorJSON(w, "Validation error", 422)
 	}
-	if !isValidEmail(req.Email) {
-		errors["email"] = "Invalid email format"
-	}
-	if len(req.Password) < 3 {
-		errors["password"] = "Password must contain at least 3 characters"
-	}
-
-	if len(errors) > 0 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(ValidationErrorResponse{Message: "Validation error", Errors: errors})
-		return
-	}
-
 	if req.Avatar == "" {
 		req.Avatar = "avatars/default.jpeg"
 	}
@@ -62,92 +46,69 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 func SignIn(w http.ResponseWriter, r *http.Request) {
 	var req SignInData
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"message": "Internal Server Error"}`, http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-
-	errors := make(map[string]string)
-
-	if !isValidEmail(req.Email) {
-		errors["email"] = "Invalid email format"
-	}
-	if len(req.Password) < 3 {
-		errors["password"] = "Password must contain at least 3 characters"
-	}
-	if len(errors) > 0 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(ValidationErrorResponse{Message: "Validation error", Errors: errors})
-		return
+		panic(err)
 	}
 
-	db := db.ConnectDB()
-	idU, password := db.GetPassword(req.Email)
-	 
+	if !isValidEmail(req.Email) || len(req.Password) < 3 {
+		errorJSON(w, "Validation error", 422)
+	}
+
+	idU, password := DB.GetPassword(req.Email)
 
 	if password != req.Password {
-		http.Error(w, `{"message": "Login failed"}`, http.StatusUnauthorized)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 
 	token := int(time.Now().UnixMicro())
 	authorized.AddToken(idU, token)
+
+	w.Header().Set("Content-Type", "application/json")
 
 	mes := fmt.Sprintf(`{"user_token": %d}`, token)
 	w.Write([]byte(mes))
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
+	id, ok := whatIdUser(r)
 
-	id, ok := findKeyByValue(authorized.token, token)
 	if ok {
 		authorized.RemoveToken(id)
-		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"message": "logout"}`))
 	} else {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
 }
 
 func EditProfile(w http.ResponseWriter, r *http.Request) {
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	id, ok := findKeyByValue(authorized.token, token)
+	id, ok := whatIdUser(r)
 	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
-		return
+		errorJSON(w, "Login failed", 403)
 	}
+
 	var req RegistrationData
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"message": "Internal Server Error"}`, http.StatusInternalServerError)
-		return
+		panic(err)
 	}
-	db := db.ConnectDB()
 
 	if req.Avatar != "" {
-		if _, err := db.Exec("UPDATE users SET avatar = ? WHERE id = ?", req.Avatar, id); err != nil {
+		if _, err := DB.Exec("UPDATE users SET avatar = ? WHERE id = ?", req.Avatar, id); err != nil {
 			panic(err)
 		}
 	}
 	if req.Fio != "" {
-		if _, err := db.Exec("UPDATE users SET fio = ? WHERE id = ?", req.Fio, id); err != nil {
+		if _, err := DB.Exec("UPDATE users SET fio = ? WHERE id = ?", req.Fio, id); err != nil {
 			panic(err)
 		}
 	}
 	if req.Password != "" {
-		if _, err := db.Exec("UPDATE users SET password = ? WHERE id = ?", req.Password, id); err != nil {
+		if _, err := DB.Exec("UPDATE users SET password = ? WHERE id = ?", req.Password, id); err != nil {
 			panic(err)
 		}
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"message": "data updated successfully"}`))
 }
@@ -155,116 +116,86 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 // ---Просмотр---
 
 func ViewProduct(w http.ResponseWriter, r *http.Request) {
-	db := db.ConnectDB()
-	products := db.GetProduct()
-	 
+	products := DB.GetProduct()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
+	//w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(products); err != nil {
-		http.Error(w, `{"message": "Internal Server Error"}`, http.StatusInternalServerError)
-		return
+		panic(err)
 	}
 }
 
 func ViewProfile(w http.ResponseWriter, r *http.Request) {
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-
-	id, ok := findKeyByValue(authorized.token, token)
+	id, ok := whatIdUser(r)
 	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
 
-	db := db.ConnectDB()
-	user := db.GetUser(id)
-	 
-
-	w.WriteHeader(http.StatusOK)
+	user := DB.GetUser(id)
 
 	if err := json.NewEncoder(w).Encode(ProfileData{User: user}); err != nil {
-		http.Error(w, `{"message": "Internal Server Error"}`, http.StatusInternalServerError)
-		return
+		panic(err)
 	}
 }
 
 // ---Корзина---
 
-func AddingProduct(w http.ResponseWriter, r *http.Request) {
+func AddingProductCart(w http.ResponseWriter, r *http.Request) {
 	product_id, err := strconv.Atoi(mux.Vars(r)["product_id"])
 	if err != nil {
-		http.Error(w, `{"error": "Invalid product ID"}`, http.StatusBadRequest)
-		return
-	}
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
+		errorJSON(w, "Invalid product ID", 400)
 		return
 	}
 
-	db := db.ConnectDB()
-	product := db.GetProductById(product_id)
+	id, ok := whatIdUser(r)
+	if !ok {
+		errorJSON(w, "Login failed", 403)
+		return
+	}
+
+	product := DB.GetProductById(product_id)
 
 	if product.IdProduct == 0 {
-		http.Error(w, `{"error": "Invalid product ID"}`, http.StatusBadRequest)
+		errorJSON(w, "Invalid product ID", 400)
 		return
 	}
 
-	id, ok := findKeyByValue(authorized.token, token)
-	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
-		return
-	}
+	DB.AddToCart(id, product_id)
 
-	db.AddToCart(id, product_id)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(`{"message": "Product add to card"}`))
 }
 
 func ViewCart(w http.ResponseWriter, r *http.Request) {
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	id, ok := findKeyByValue(authorized.token, token)
+	id, ok := whatIdUser(r)
 	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
-	db := db.ConnectDB()
-	cart := db.ViewCart(id)
-	 
+
+	cart := DB.ViewCart(id)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(cart); err != nil {
-		http.Error(w, `{"message": "Internal Server Error"}`, http.StatusInternalServerError)
-		return
+		panic(err)
 	}
 }
 
 func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	idC, err := strconv.Atoi(mux.Vars(r)["idC"])
 	if err != nil {
-		http.Error(w, `{"error": "Forbidden for you"}`, http.StatusForbidden)
+		errorJSON(w, "Forbidden for you", 403)
 		return
 	}
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	id, ok := findKeyByValue(authorized.token, token)
+
+	id, ok := whatIdUser(r)
 	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
-	db := db.ConnectDB()
-	db.DeleteProduct(idC, id)
-	 
+
+	DB.DeleteProduct(idC, id)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"message": "Item removed from cart"}`))
@@ -273,22 +204,19 @@ func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 // ---Заказ---
 
 func PlacingOrder(w http.ResponseWriter, r *http.Request) {
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	id, ok := findKeyByValue(authorized.token, token)
+	id, ok := whatIdUser(r)
 	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
-	db := db.ConnectDB()
-	products, order_price := db.PlacingOrder(id)
+
+	products, order_price := DB.PlacingOrder(id)
 
 	if len(products) == 0 {
-		http.Error(w, `{"error": "Cart is empty"}`, http.StatusUnprocessableEntity)
+		errorJSON(w, "Cart is empty", 400)
 		return
 	}
+
 	storage := fmt.Sprintf("db/orderStorage/%d.json", id)
 	if _, err := os.Stat(storage); err != nil {
 		order := [1]Order{{IdO: 1, Products: products, Order_price: order_price}}
@@ -302,7 +230,7 @@ func PlacingOrder(w http.ResponseWriter, r *http.Request) {
 		if err = encoder.Encode(order); err != nil {
 			panic(err)
 		}
-		db.DeleteCart(id)
+		DB.DeleteCart(id)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"order_id": 1,	"message": "Order is processed"}`))
@@ -331,7 +259,7 @@ func PlacingOrder(w http.ResponseWriter, r *http.Request) {
 		if err = encoder.Encode(orders); err != nil {
 			panic(err)
 		}
-		db.DeleteCart(id)
+		DB.DeleteCart(id)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(fmt.Sprintf(`{"order_id": %d, "message": "Order is processed"}`, newOrder.IdO)))
@@ -339,18 +267,15 @@ func PlacingOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func ViewOrder(w http.ResponseWriter, r *http.Request) {
-	token := getTokenFromHeader(w, r)
-	if token == -1 {
-		return
-	}
-	id, ok := findKeyByValue(authorized.token, token)
+	id, ok := whatIdUser(r)
 	if !ok {
-		http.Error(w, `{"error": "Invalid token"}`, http.StatusBadRequest)
+		errorJSON(w, "Login failed", 403)
 		return
 	}
+
 	storage := fmt.Sprintf("db/orderStorage/%d.json", id)
 	if _, err := os.Stat(storage); err != nil {
-		http.Error(w, `{"error": "Orders not found"}`, http.StatusNotFound)
+		errorJSON(w, "Orders not found", 404)
 		return
 	} else {
 		file, err := os.Open(storage)

@@ -19,7 +19,7 @@ func main() {
 	router.Path("/logout").Methods("GET").HandlerFunc(users.Logout)
 	router.Path("/products").Methods("GET").HandlerFunc(users.ViewProduct)
 	router.Path("/profile").Methods("GET").HandlerFunc(users.ViewProfile)
-	router.Path("/cart/{product_id}").Methods("POST").HandlerFunc(users.AddingProduct)
+	router.Path("/cart/{product_id}").Methods("POST").HandlerFunc(users.AddingProductCart)
 	router.Path("/cart").Methods("GET").HandlerFunc(users.ViewCart)
 	router.Path("/cart/{idC}").Methods("DELETE").HandlerFunc(users.DeleteProduct)
 	router.Path("/order").Methods("POST").HandlerFunc(users.PlacingOrder)
