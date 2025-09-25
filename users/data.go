@@ -66,7 +66,7 @@ type admin struct {
 }
 
 func NewAdmins() *admin {
-	idAdmins := make([]int, 1)
+	idAdmins := make([]int, 2)
 
 	file, err := os.Open("users/admins.json")
 	if err != nil {

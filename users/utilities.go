@@ -45,5 +45,5 @@ func errorJSON(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	message = fmt.Sprintf(`{"message": "%s"}`, message)
-	w.Write([]byte(`{"message": "` + message + `"}`))
+	w.Write([]byte(message))
 }

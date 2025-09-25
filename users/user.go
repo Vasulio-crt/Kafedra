@@ -186,7 +186,7 @@ func ViewCart(w http.ResponseWriter, r *http.Request) {
 func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	idC, err := strconv.Atoi(mux.Vars(r)["idC"])
 	if err != nil {
-		errorJSON(w, "Forbidden for you", 403)
+		errorJSON(w, "Invalid ID", 400)
 		return
 	}
 
@@ -276,7 +276,7 @@ func ViewOrder(w http.ResponseWriter, r *http.Request) {
 
 	storage := fmt.Sprintf("db/orderStorage/%d.json", id)
 	if _, err := os.Stat(storage); err != nil {
-		errorJSON(w, "Orders not found", 404)
+		errorJSON(w, "Not found", 404)
 		return
 	} else {
 		file, err := os.Open(storage)

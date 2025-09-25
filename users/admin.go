@@ -22,7 +22,7 @@ func AddProductAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !contains(admins.IDs, id) {
-		errorJSON(w, "not Admin", 403)
+		errorJSON(w, "Forbidden for you", 403)
 		return
 	}
 
@@ -59,13 +59,13 @@ func DeleteProductAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !contains(admins.IDs, id) {
-		errorJSON(w, "not Admin", 403)
+		errorJSON(w, "Forbidden for you", 403)
 		return
 	}
 
 	idP, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		errorJSON(w, "Forbidden for you", 403)
+		errorJSON(w, "Invalid product ID", 400)
 		return
 	}
 
@@ -82,12 +82,12 @@ func EditProductAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !contains(admins.IDs, id) {
-		errorJSON(w, "not Admin", 403)
+		errorJSON(w, "Forbidden for you", 403)
 		return
 	}
 	idP, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		errorJSON(w, "Forbidden for you", 403)
+		errorJSON(w, "Invalid product ID", 400)
 		return
 	}
 
