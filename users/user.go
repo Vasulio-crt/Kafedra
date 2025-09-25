@@ -133,6 +133,7 @@ func ViewProfile(w http.ResponseWriter, r *http.Request) {
 
 	user := DB.GetUser(id)
 
+	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ProfileData{User: user}); err != nil {
 		panic(err)
 	}

@@ -1,7 +1,6 @@
 package users
 
 import (
-	"backendAPI/db"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -23,25 +22,23 @@ func AddProductAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !contains(admins.IDs, id) {
-		http.Error(w, `{"error": "not Admin"}`, http.StatusForbidden)
+		errorJSON(w, "not Admin", 403)
 		return
 	}
 
 	var req Product
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"message": "Invalid product data"}`, http.StatusBadRequest)
-		return
+		panic(err)
 	}
 	if req.Name == "" || req.Description == "" || req.Price == 0 {
-		http.Error(w, `{"error": "Invalid product data"}`, http.StatusBadRequest)
+		errorJSON(w, "Invalid product data", 400)
 	}
 
-	db := db.ConnectDB()
-	idP := db.AddProductAdmin(req.Name, req.Description, req.Price)
-	db.CloseDB()
+	idP := DB.AddProductAdmin(req.Name, req.Description, req.Price)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+
 	mes := fmt.Sprintf(`{"product_id": %d, "message": "Product added"}`, idP)
 	w.Write([]byte(mes))
 }
@@ -62,18 +59,17 @@ func DeleteProductAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !contains(admins.IDs, id) {
-		http.Error(w, `{"error": "not Admin"}`, http.StatusForbidden)
+		errorJSON(w, "not Admin", 403)
 		return
 	}
 
 	idP, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, `{"error": "Forbidden for you"}`, http.StatusForbidden)
+		errorJSON(w, "Forbidden for you", 403)
 		return
 	}
-	db := db.ConnectDB()
-	db.DeleteProductAdmin(idP)
-	db.CloseDB()
+
+	DB.DeleteProductAdmin(idP)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"message": "Product removed"}`))
@@ -86,41 +82,39 @@ func EditProductAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !contains(admins.IDs, id) {
-		http.Error(w, `{"error": "not Admin"}`, http.StatusForbidden)
+		errorJSON(w, "not Admin", 403)
 		return
 	}
 	idP, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, `{"error": "Forbidden for you"}`, http.StatusForbidden)
+		errorJSON(w, "Forbidden for you", 403)
 		return
 	}
 
 	var req Product
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"message": "Invalid product data"}`, http.StatusBadRequest)
+		errorJSON(w, "Invalid product data", 400)
 		return
 	}
 
-	db := db.ConnectDB()
-	defer db.CloseDB()
 	if req.Name != "" {
-		if _, err := db.Exec("UPDATE products SET name = ? WHERE idP = ?", req.Name, idP); err != nil {
+		if _, err := DB.Exec("UPDATE products SET name = ? WHERE idP = ?", req.Name, idP); err != nil {
 			panic(err)
 		}
 	}
 	if req.Description != "" {
-		if _, err := db.Exec("UPDATE products SET description = ? WHERE idP = ?", req.Description, idP); err != nil {
+		if _, err := DB.Exec("UPDATE products SET description = ? WHERE idP = ?", req.Description, idP); err != nil {
 			panic(err)
 		}
 	}
 	if req.Price != 0 {
-		if _, err := db.Exec("UPDATE products SET price = ? WHERE idP = ?", req.Price, idP); err != nil {
+		if _, err := DB.Exec("UPDATE products SET price = ? WHERE idP = ?", req.Price, idP); err != nil {
 			panic(err)
 		}
 	}
 
+	product := DB.SelectProduct(idP)
 	w.Header().Set("Content-Type", "application/json")
-	product := db.SelectProduct(idP)
 	if err := json.NewEncoder(w).Encode(product); err != nil {
 		panic(err)
 	}
