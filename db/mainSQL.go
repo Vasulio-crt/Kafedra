@@ -11,10 +11,32 @@ import (
 const storage = "db/main.db"
 
 type Product struct {
-	IdProduct   int
-	Name        string
-	Description string
-	Price       int
+	IdProduct   int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       int    `json:"price"`
+}
+
+type UserData struct {
+	Id     int    `json:"id"`
+	Fio    string `json:"fio"`
+	Email  string `json:"email"`
+	Avatar string `json:"avatar"`
+}
+
+type Cart struct {
+	IdC         int    `json:"id"`
+	IdProduct   int    `json:"product_id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       int    `json:"price"`
+}
+
+type ProductFull struct {
+	Id          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       int    `json:"price"`
 }
 
 func CreateDatabase() {
@@ -55,50 +77,41 @@ func (c *cdb) CloseDB() {
 	c.db.Close()
 }
 
-func (c *cdb) Exec(query string, args ... any) (sql.Result, error) {
+func (c *cdb) Exec(query string, args ...any) (sql.Result, error) {
 	return c.db.Exec(query, args...)
 }
 
 func (c *cdb) GetIdUser(email string) int {
-	rows, err := c.db.Query("SELECT id FROM users WHERE email = ?", email)
+	row, err := c.db.Query("SELECT id FROM users WHERE email = ?", email)
 	if err != nil {
 		panic(err)
 	}
-	defer rows.Close()
-	id := 1
+	defer row.Close()
+	id := 0
 
-	for rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
-	}
+	row.Next()
+	row.Scan(&id)
+
 	return id
 }
 
 func (c *cdb) GetPassword(email string) (int, string) {
-	rows, err := c.db.Query("SELECT id, password FROM users WHERE email = ?", email)
+	row, err := c.db.Query("SELECT id, password FROM users WHERE email = ?", email)
 	if err != nil {
 		panic(err)
 	}
-	defer rows.Close()
-	id := 1
+	defer row.Close()
+	id := 0
 	password := ""
 
-	for rows.Next() {
-		err := rows.Scan(&id, &password)
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
-	}
+	row.Next()
+	row.Scan(&id, &password)
+
 	return id, password
 }
 
 func (c *cdb) InsertUser(fio string, email string, password string, avatar string) {
 	query := "INSERT INTO users (fio, email, password, avatar) VALUES (?, ?, ?, ?)"
-
 	_, err := c.db.Exec(query, fio, email, password, avatar)
 	if err != nil {
 		panic(err)
@@ -125,28 +138,16 @@ func (c *cdb) GetProduct() []Product {
 	return products
 }
 
-type UserData struct {
-	Id     int    `json:"id"`
-	Fio    string `json:"fio"`
-	Email  string `json:"email"`
-	Avatar string `json:"avatar"`
-}
-
 func (c *cdb) GetUser(id int) UserData {
-	rows, err := c.db.Query("SELECT id, fio, email, avatar FROM users WHERE id = ?", id)
+	row, err := c.db.Query("SELECT id, fio, email, avatar FROM users WHERE id = ?", id)
 	if err != nil {
 		panic(err)
 	}
-	defer rows.Close()
+	defer row.Close()
 	user := UserData{}
 
-	for rows.Next() {
-		err := rows.Scan(&user.Id, &user.Fio, &user.Email, &user.Avatar)
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
-	}
+	row.Next()
+	row.Scan(&user.Id, &user.Fio, &user.Email, &user.Avatar)
 
 	return user
 }
@@ -174,14 +175,6 @@ func (c *cdb) AddToCart(id int, product_id int) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-type Cart struct {
-	IdC         int    `json:"id"`
-	IdProduct   int    `json:"product_id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Price       int    `json:"price"`
 }
 
 func (c *cdb) ViewCart(idU int) []Cart {
@@ -239,8 +232,9 @@ func (c *cdb) PlacingOrder(id int) ([]int, int) {
 	return products, priceTotal
 }
 
+// --- admin sql ---
 
-func (c *cdb) AddProductAdmin(name string, description string, price int) int{
+func (c *cdb) AddProductAdmin(name string, description string, price int) int {
 	result, err := c.db.Exec("INSERT INTO products (name, description, price) VALUES (?, ?, ?)", name, description, price)
 	if err != nil {
 		panic(err)
@@ -252,18 +246,11 @@ func (c *cdb) AddProductAdmin(name string, description string, price int) int{
 	return int(id)
 }
 
-func (c *cdb) DeleteProductAdmin(idP int){
+func (c *cdb) DeleteProductAdmin(idP int) {
 	_, err := c.db.Exec("DELETE FROM products WHERE idP = ?", idP)
 	if err != nil {
 		panic(err)
 	}
-}
-
-type ProductFull struct {
-	Id          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Price       int    `json:"price"`
 }
 
 func (c *cdb) SelectProduct(idP int) ProductFull {
@@ -273,7 +260,9 @@ func (c *cdb) SelectProduct(idP int) ProductFull {
 	}
 	defer row.Close()
 	product := ProductFull{}
+
 	row.Next()
 	row.Scan(&product.Id, &product.Name, &product.Description, &product.Price)
+
 	return product
 }
