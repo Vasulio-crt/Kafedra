@@ -4,7 +4,6 @@
 ```bash
 bash run.sh
 ```
-> в run.sh за место go mod tidy, поставьте go mod download
 
 **ИЛИ**
 
